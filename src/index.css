@@ -1,11 +1,109 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
+/* ── Light mode tokens (Material Blue) ── */
+:root {
+  --app-bg: #F5F7FA;
+  --surface: #FFFFFF;
+  --surface-hover: #E8EAF6;
+  --txt: #1A237E;
+  --txt-s: #546E7A;
+  --txt-m: #90A4AE;
+  --bdr: #E0E0E0;
+  --bdr-l: #EEEEEE;
+  --accent: #1976D2;
+  --accent-h: #1565C0;
+  --accent-soft: #E3F2FD;
+  --btn-bg: #1565C0;
+  --btn-bg-h: #0D47A1;
+  --btn-text: #FFFFFF;
+  --header-bg: #1565C0;
+  --input-bg: #F5F7FA;
+  --nav-bg: #FFFFFF;
+  --nav-bdr: #E0E0E0;
+  --overlay: rgba(0,0,0,0.4);
+
+  /* Semantic colors for badges */
+  --success-bg: #E8F5E9;
+  --success-text: #2E7D32;
+  --warning-bg: #FFF8E1;
+  --warning-text: #F57F17;
+  --danger-bg: #FFEBEE;
+  --danger-text: #C62828;
+  --info-bg: #E3F2FD;
+  --info-text: #1565C0;
+  --muted-bg: #F5F5F5;
+  --muted-text: #757575;
+}
+
+/* ── Dark mode tokens ── */
+.dark {
+  --app-bg: #0F1214;
+  --surface: #1A1E24;
+  --surface-hover: #242830;
+  --txt: #E3E8F0;
+  --txt-s: #9EA7B3;
+  --txt-m: #5A6370;
+  --bdr: #2D333B;
+  --bdr-l: #22272E;
+  --accent: #64B5F6;
+  --accent-h: #90CAF9;
+  --accent-soft: #1A2940;
+  --btn-bg: #1565C0;
+  --btn-bg-h: #1976D2;
+  --btn-text: #FFFFFF;
+  --header-bg: #111519;
+  --input-bg: #141820;
+  --nav-bg: #1A1E24;
+  --nav-bdr: #2D333B;
+  --overlay: rgba(0,0,0,0.65);
+
+  /* Semantic colors for badges — dark-friendly */
+  --success-bg: #1B3626;
+  --success-text: #66BB6A;
+  --warning-bg: #332B16;
+  --warning-text: #FFB74D;
+  --danger-bg: #3B1C1C;
+  --danger-text: #EF9A9A;
+  --info-bg: #1A2940;
+  --info-text: #64B5F6;
+  --muted-bg: #22272E;
+  --muted-text: #7A8490;
+}
+
+/* ── Tailwind design tokens ── */
 @theme {
-  --color-primary: #0f3460;
-  --color-primary-dark: #0b2545;
-  --color-accent: #e94560;
-  --color-success: #0cca4a;
-  --color-warning: #f59e0b;
+  --color-app-bg: var(--app-bg);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-txt: var(--txt);
+  --color-txt-s: var(--txt-s);
+  --color-txt-m: var(--txt-m);
+  --color-bdr: var(--bdr);
+  --color-bdr-l: var(--bdr-l);
+  --color-accent: var(--accent);
+  --color-accent-h: var(--accent-h);
+  --color-accent-soft: var(--accent-soft);
+  --color-btn: var(--btn-bg);
+  --color-btn-h: var(--btn-bg-h);
+  --color-btn-text: var(--btn-text);
+  --color-header: var(--header-bg);
+  --color-input: var(--input-bg);
+  --color-nav: var(--nav-bg);
+  --color-nav-bdr: var(--nav-bdr);
+  --color-success-bg: var(--success-bg);
+  --color-success-text: var(--success-text);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-text: var(--warning-text);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-text: var(--danger-text);
+  --color-info-bg: var(--info-bg);
+  --color-info-text: var(--info-text);
+  --color-muted-bg: var(--muted-bg);
+  --color-muted-text: var(--muted-text);
+  --color-success: #2E7D32;
+  --color-warning: #F57F17;
+  --color-danger: #C62828;
 }
 
 html, body {
@@ -13,6 +111,27 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
+  background-color: var(--app-bg);
+  color: var(--txt);
+}
+
+/* Scrollbar theming */
+* {
+  scrollbar-color: var(--bdr) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--bdr);
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--txt-m);
 }
 
 /* Safe area for iOS PWA */

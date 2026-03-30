@@ -1,3 +1,4 @@
+import path from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -11,8 +12,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Deko Inventario',
-        short_name: 'Deko',
+        name: 'Woods Inventario',
+        short_name: 'Woods',
         theme_color: '#0f3460',
         background_color: '#ffffff',
         display: 'standalone',
@@ -31,6 +32,11 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   server: {
     host: '0.0.0.0',
   },

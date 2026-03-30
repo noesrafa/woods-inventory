@@ -1,19 +1,20 @@
 import { useEffect, useState, useCallback, useMemo, memo } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../context/AuthContext'
 import type { Product, Category } from '../lib/types'
-import { Search, X, Plus, Minus, Package, ChevronDown } from 'lucide-react'
+import { Search, X, Package, ChevronDown, ExternalLink, QrCode, Image } from 'lucide-react'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 const PAGE_SIZE = 50
 
-const StockBadge = memo(function StockBadge({ stock, minStock }: { stock: number; minStock: number }) {
-  if (stock === 0) {
-    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Agotado</span>
-  }
-  if (stock <= minStock) {
-    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">{stock}</span>
-  }
-  return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">{stock}</span>
+const QrBadge = memo(function QrBadge({ status }: { status: string | null }) {
+  if (!status) return null
+  const variant = status === 'FUNCIONA' ? 'success' as const
+    : status === 'NO FUNCIONA' ? 'danger' as const
+    : 'muted' as const
+  return <Badge variant={variant}><QrCode size={10} /> {status}</Badge>
 })
 
 const ProductCard = memo(function ProductCard({
@@ -25,20 +26,29 @@ const ProductCard = memo(function ProductCard({
   categoryName: string
   onSelect: (p: Product) => void
 }) {
+  const thumbnail = product.images?.[0]
+  const hasValidImage = !!thumbnail
   return (
     <button
       onClick={() => onSelect(product)}
-      className="bg-white rounded-xl shadow-sm p-4 text-left w-full active:bg-gray-50 transition-colors border border-gray-100"
+      className="bg-surface rounded-xl shadow-sm p-3 text-left w-full active:bg-surface-hover transition-colors border border-bdr-l overflow-hidden"
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-900 text-sm leading-tight truncate">{product.name}</p>
-          <p className="text-xs text-gray-400 mt-0.5 font-mono">{product.sku}</p>
-          {categoryName && (
-            <p className="text-xs text-[#0f3460]/60 mt-1">{categoryName}</p>
-          )}
+      <div className="flex items-start gap-3 min-w-0">
+        {hasValidImage ? (
+          <img src={thumbnail} alt="" className="w-14 h-14 rounded-lg object-cover bg-app-bg shrink-0" />
+        ) : (
+          <div className="w-14 h-14 rounded-lg bg-app-bg flex items-center justify-center shrink-0">
+            <Image size={20} className="text-txt-m" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <p className="font-medium text-txt text-sm leading-tight truncate">{product.name}</p>
+          <p className="text-xs text-txt-m mt-0.5 font-mono truncate">{product.sku}</p>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            {categoryName && <Badge>{categoryName}</Badge>}
+            <QrBadge status={product.qr_status} />
+          </div>
         </div>
-        <StockBadge stock={product.stock} minStock={product.min_stock} />
       </div>
     </button>
   )
@@ -47,125 +57,81 @@ const ProductCard = memo(function ProductCard({
 function ProductDetail({
   product,
   categoryName,
-  isAdmin,
   onClose,
-  onStockChange,
 }: {
   product: Product
   categoryName: string
-  isAdmin: boolean
   onClose: () => void
-  onStockChange: (productId: string, delta: number) => Promise<void>
 }) {
-  const [adjusting, setAdjusting] = useState(false)
-
-  const handleStockChange = async (delta: number) => {
-    setAdjusting(true)
-    await onStockChange(product.id, delta)
-    setAdjusting(false)
-  }
+  const [activeImage, setActiveImage] = useState(0)
+  const validImages = product.images || []
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[85vh] overflow-y-auto safe-area-bottom">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between rounded-t-2xl">
-          <h2 className="text-lg font-bold text-gray-900 truncate pr-4">{product.name}</h2>
-          <button onClick={onClose} className="p-2 -mr-2 text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center">
-            <X size={20} />
-          </button>
-        </div>
+    <Drawer open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>{product.name}</DrawerTitle>
+          <DrawerDescription className="sr-only">Detalle del producto</DrawerDescription>
+        </DrawerHeader>
 
-        <div className="p-4 space-y-4">
-          {/* SKU & Category */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="bg-gray-100 text-gray-600 text-xs font-mono px-2.5 py-1 rounded-lg">{product.sku}</span>
-            {categoryName && (
-              <span className="bg-[#0f3460]/10 text-[#0f3460] text-xs px-2.5 py-1 rounded-lg">{categoryName}</span>
-            )}
-          </div>
-
-          {/* Stock Section */}
-          <div className="bg-gray-50 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Stock actual</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-2xl font-bold text-gray-900">{product.stock}</span>
-                  <StockBadge stock={product.stock} minStock={product.min_stock} />
-                </div>
-                <p className="text-xs text-gray-400 mt-1">Min: {product.min_stock}</p>
-              </div>
-
-              {isAdmin && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleStockChange(-1)}
-                    disabled={adjusting || product.stock === 0}
-                    className="w-11 h-11 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 active:bg-gray-200 transition-colors"
-                  >
-                    <Minus size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleStockChange(1)}
-                    disabled={adjusting}
-                    className="w-11 h-11 rounded-xl bg-[#0f3460] flex items-center justify-center text-white hover:bg-[#0b2545] disabled:opacity-50 active:bg-[#0b2545] transition-colors"
-                  >
-                    <Plus size={18} />
-                  </button>
+        <div className="overflow-y-auto p-4 space-y-4">
+          {validImages.length > 0 && (
+            <div>
+              <img src={validImages[activeImage]} alt="" className="w-full h-48 object-contain bg-app-bg rounded-xl" />
+              {validImages.length > 1 && (
+                <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                  {validImages.map((url, idx) => (
+                    <button key={idx} onClick={() => setActiveImage(idx)}
+                      className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 ${activeImage === idx ? 'border-accent' : 'border-transparent'}`}>
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
+          )}
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className="font-mono">{product.sku}</Badge>
+            {categoryName && <Badge>{categoryName}</Badge>}
+            <QrBadge status={product.qr_status} />
           </div>
 
-          {/* Description */}
-          {product.description && (
+          {product.short_description && (
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-1">Descripcion</p>
-              <p className="text-sm text-gray-500 leading-relaxed">{product.description}</p>
+              <p className="text-sm font-medium text-txt-s mb-1">Descripcion (Lista de precios)</p>
+              <p className="text-sm text-txt-s leading-relaxed whitespace-pre-line">{product.short_description}</p>
             </div>
           )}
 
-          {/* Dimensions */}
-          {product.dimensions && (
+          {product.full_description && (
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-1">Dimensiones</p>
-              <p className="text-sm text-gray-500">{product.dimensions}</p>
+              <p className="text-sm font-medium text-txt-s mb-1">Descripcion TDS</p>
+              <p className="text-sm text-txt-s leading-relaxed whitespace-pre-line">{product.full_description}</p>
             </div>
           )}
 
-          {/* Colors */}
-          {product.colors && product.colors.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-1">Colores</p>
-              <div className="flex flex-wrap gap-1.5">
-                {product.colors.map((c) => (
-                  <span key={c} className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-lg">{c}</span>
-                ))}
-              </div>
+          {product.observations && (
+            <div className="bg-warning-bg rounded-xl p-3">
+              <p className="text-sm font-medium text-warning-text mb-1">Observaciones</p>
+              <p className="text-xs text-warning-text/80 leading-relaxed">{product.observations}</p>
             </div>
           )}
 
-          {/* Materials */}
-          {product.materials && product.materials.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-1">Materiales</p>
-              <div className="flex flex-wrap gap-1.5">
-                {product.materials.map((m) => (
-                  <span key={m} className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-lg">{m}</span>
-                ))}
-              </div>
-            </div>
+          {product.store_url && (
+            <Button variant="link" asChild className="p-0 h-auto">
+              <a href={product.store_url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={14} /> Ver en tienda
+              </a>
+            </Button>
           )}
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   )
 }
 
 export default function Catalog() {
-  const { profile } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -176,13 +142,9 @@ export default function Catalog() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
 
-  const isAdmin = profile?.role === 'admin'
-
   const categoryMap = useMemo(() => {
     const map = new Map<string, string>()
-    for (const c of categories) {
-      map.set(c.id, c.name)
-    }
+    for (const c of categories) map.set(c.id, c.name)
     return map
   }, [categories])
 
@@ -190,75 +152,44 @@ export default function Catalog() {
     if (replace) setLoading(true)
     else setLoadingMore(true)
 
-    let query = supabase
-      .from('products')
-      .select('*')
-      .eq('is_active', true)
-      .order('name')
+    let query = supabase.from('products').select('*').eq('is_active', true).order('name')
       .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1)
 
     if (searchTerm.trim()) {
       const term = `%${searchTerm.trim()}%`
       query = query.or(`name.ilike.${term},sku.ilike.${term}`)
     }
-
-    if (categoryId) {
-      query = query.eq('category_id', categoryId)
-    }
+    if (categoryId) query = query.eq('category_id', categoryId)
 
     const { data, error } = await query
-
     if (!error && data) {
-      if (replace) {
-        setProducts(data)
-      } else {
-        setProducts((prev) => [...prev, ...data])
-      }
+      if (replace) setProducts(data)
+      else setProducts((prev) => [...prev, ...data])
       setHasMore(data.length === PAGE_SIZE)
     }
-
     setLoading(false)
     setLoadingMore(false)
   }, [])
 
-  // Fetch categories once
   useEffect(() => {
-    supabase.from('categories').select('*').order('name').then(({ data }) => {
-      if (data) setCategories(data)
-    })
+    supabase.from('categories').select('*').order('name').then(({ data }) => { if (data) setCategories(data) })
   }, [])
 
-  // Fetch products on search/category change
   useEffect(() => {
     setPage(0)
     fetchProducts(0, search, selectedCategory, true)
   }, [search, selectedCategory, fetchProducts])
 
-  // Real-time subscription
   useEffect(() => {
-    const channel = supabase
-      .channel('products-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'products' },
-        (payload) => {
-          if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as Product
-            setProducts((prev) =>
-              prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
-            )
-            // Also update selected product if open
-            setSelectedProduct((prev) =>
-              prev?.id === updated.id ? { ...prev, ...updated } : prev
-            )
-          }
+    const channel = supabase.channel('products-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as Product
+          setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
+          setSelectedProduct((prev) => prev?.id === updated.id ? { ...prev, ...updated } : prev)
         }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+      }).subscribe()
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   const loadMore = () => {
@@ -267,137 +198,77 @@ export default function Catalog() {
     fetchProducts(nextPage, search, selectedCategory, false)
   }
 
-  const handleStockChange = async (productId: string, delta: number) => {
-    const product = products.find((p) => p.id === productId)
-    if (!product) return
-
-    const newStock = Math.max(0, product.stock + delta)
-    await supabase
-      .from('products')
-      .update({ stock: newStock })
-      .eq('id', productId)
-
-    // Also record stock movement
-    await supabase.from('stock_movements').insert({
-      product_id: productId,
-      user_id: profile?.id ?? null,
-      type: delta > 0 ? 'in' : 'out',
-      quantity: Math.abs(delta),
-      reason: 'Ajuste manual',
-    })
-  }
-
-  const handleSelectProduct = useCallback((p: Product) => {
-    setSelectedProduct(p)
-  }, [])
+  const handleSelectProduct = useCallback((p: Product) => { setSelectedProduct(p) }, [])
 
   return (
     <div className="flex flex-col h-full">
-      {/* Search - sticky */}
-      <div className="sticky top-0 z-30 bg-gray-50 px-4 pt-3 pb-2 space-y-2">
+      <div className="shrink-0 bg-app-bg px-4 pt-3 pb-2 space-y-2 z-10">
         <div className="relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-m" />
+          <Input
             type="text"
             placeholder="Buscar por nombre o SKU..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f3460] focus:border-transparent transition-shadow"
+            className="pl-10 pr-10"
           />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1"
-            >
-              <X size={16} />
-            </button>
-          )}
+          {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-txt-m p-1"><X size={16} /></button>}
         </div>
-
-        {/* Category chips */}
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-          <button
+          <Button
+            variant={!selectedCategory ? 'default' : 'secondary'}
+            size="sm"
             onClick={() => setSelectedCategory(null)}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              !selectedCategory
-                ? 'bg-[#0f3460] text-white'
-                : 'bg-white text-gray-600 border border-gray-200'
-            }`}
+            className="shrink-0 rounded-full"
           >
             Todos
-          </button>
+          </Button>
           {categories.map((cat) => (
-            <button
+            <Button
               key={cat.id}
+              variant={selectedCategory === cat.id ? 'default' : 'secondary'}
+              size="sm"
               onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                selectedCategory === cat.id
-                  ? 'bg-[#0f3460] text-white'
-                  : 'bg-white text-gray-600 border border-gray-200'
-              }`}
+              className="shrink-0 rounded-full"
             >
               {cat.name}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
-      {/* Products */}
-      <div className="flex-1 px-4 pb-4">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#0f3460] border-t-transparent" />
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
           </div>
         ) : products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+          <div className="flex flex-col items-center justify-center py-20 text-txt-m">
             <Package size={48} className="mb-3" />
             <p className="text-sm">No se encontraron productos</p>
           </div>
         ) : (
           <>
-            <p className="text-xs text-gray-400 mb-2 mt-1">
-              {products.length} producto{products.length !== 1 ? 's' : ''}
-            </p>
+            <p className="text-xs text-txt-m mb-2 mt-1">{products.length} producto{products.length !== 1 ? 's' : ''}</p>
             <div className="grid gap-2">
               {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  categoryName={categoryMap.get(product.category_id ?? '') ?? ''}
-                  onSelect={handleSelectProduct}
-                />
+                <ProductCard key={product.id} product={product}
+                  categoryName={categoryMap.get(product.category_id ?? '') ?? ''} onSelect={handleSelectProduct} />
               ))}
             </div>
-
             {hasMore && (
-              <button
-                onClick={loadMore}
-                disabled={loadingMore}
-                className="w-full mt-4 py-3 text-sm font-medium text-[#0f3460] bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-              >
-                {loadingMore ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#0f3460] border-t-transparent" />
-                ) : (
-                  <>
-                    <ChevronDown size={16} />
-                    Cargar mas
-                  </>
-                )}
-              </button>
+              <Button variant="secondary" className="w-full mt-4" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-accent border-t-transparent" />
+                  : <><ChevronDown size={16} /> Cargar mas</>}
+              </Button>
             )}
           </>
         )}
       </div>
 
-      {/* Product Detail Sheet */}
       {selectedProduct && (
-        <ProductDetail
-          product={selectedProduct}
-          categoryName={categoryMap.get(selectedProduct.category_id ?? '') ?? ''}
-          isAdmin={isAdmin}
-          onClose={() => setSelectedProduct(null)}
-          onStockChange={handleStockChange}
-        />
+        <ProductDetail product={selectedProduct} categoryName={categoryMap.get(selectedProduct.category_id ?? '') ?? ''}
+          onClose={() => setSelectedProduct(null)} />
       )}
     </div>
   )

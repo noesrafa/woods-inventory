@@ -1,10 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
+import { Toaster } from 'sonner'
 import Layout from './components/Layout'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
 import Catalog from './pages/Catalog'
-import Sales from './pages/Sales'
+import Products from './pages/Products'
 import Profile from './pages/Profile'
 import type { ReactNode } from 'react'
 
@@ -13,8 +14,8 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#0f3460] border-t-transparent" />
+      <div className="min-h-screen flex items-center justify-center bg-app-bg">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
       </div>
     )
   }
@@ -37,9 +38,8 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/catalog" element={<Catalog />} />
-        <Route path="/sales" element={<Sales />} />
+        <Route path="/" element={<Catalog />} />
+        <Route path="/products" element={<Products />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
     </Routes>
@@ -49,9 +49,21 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              style: {
+                background: 'var(--surface)',
+                color: 'var(--txt)',
+                border: '1px solid var(--bdr)',
+              },
+            }}
+          />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   )
 }
